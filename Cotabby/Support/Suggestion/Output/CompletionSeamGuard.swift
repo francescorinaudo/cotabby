@@ -34,6 +34,10 @@ nonisolated enum CompletionSeamGuard {
         case junkPunctuationRun
         case seamMisspelling(word: String)
         case leadingWordMisspelling(word: String)
+        /// The joined seam word is unknown but each half is a word on its own ("the" + "team"):
+        /// the model started a new word and dropped the space before it, which chat-template
+        /// endpoints do systematically. The caller inserts the space instead of suppressing.
+        case missingSeamSpace(head: String, tail: String)
     }
 
     /// Streaming must not expose the first generated word until it is complete enough to assess.
@@ -69,11 +73,17 @@ nonisolated enum CompletionSeamGuard {
             return .junkPunctuationRun
         }
 
-        if let seamWord = misspellingCandidateSeamWord(
+        if let seam = misspellingCandidateSeamWord(
             precedingText: precedingText,
             completion: completion
-        ), spellingAssessment(seamWord) != .known {
-            return .seamMisspelling(word: seamWord)
+        ), spellingAssessment(seam.word) != .known {
+            // Two known words glued together is a missing space, not a misspelled splice. Both
+            // halves must be known outright: a correctable typo in the generated word ("teh")
+            // keeps the seam rule's suppression, exactly as the leading-word rule would.
+            if spellingAssessment(seam.head) == .known, spellingAssessment(seam.tail) == .known {
+                return .missingSeamSpace(head: seam.head, tail: seam.tail)
+            }
+            return .seamMisspelling(word: seam.word)
         }
 
         if case let .candidate(leadingWord, _) = leadingWordProbe(
@@ -147,12 +157,20 @@ nonisolated enum CompletionSeamGuard {
 
     // MARK: - Seam misspellings
 
-    /// The joined word across the caret seam when the mid-word rule applies, or nil when any of
-    /// the narrowing conditions exempt it.
+    /// A mid-word seam: the letters before the caret, the letters the completion starts with,
+    /// and the word they form together.
+    private struct SeamCandidate {
+        let head: String
+        let tail: String
+        var word: String { head + tail }
+    }
+
+    /// The joined word across the caret seam (with its two halves) when the mid-word rule
+    /// applies, or nil when any of the narrowing conditions exempt it.
     private static func misspellingCandidateSeamWord(
         precedingText: String,
         completion: String
-    ) -> String? {
+    ) -> SeamCandidate? {
         guard let lastBefore = precedingText.last, lastBefore.isLetter,
               let firstAfter = completion.first, firstAfter.isLetter
         else { return nil }
@@ -165,7 +183,7 @@ nonisolated enum CompletionSeamGuard {
         // Capitalized joins are usually names or brands the dictionary cannot know.
         guard let firstCharacter = seamWord.first, firstCharacter.isLowercase else { return nil }
         guard !containsCJK(seamWord) else { return nil }
-        return seamWord
+        return SeamCandidate(head: head, tail: tail)
     }
 
     private enum LeadingWordProbe {

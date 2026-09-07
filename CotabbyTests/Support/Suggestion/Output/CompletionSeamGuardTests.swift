@@ -136,6 +136,71 @@ final class CompletionSeamGuardTests: XCTestCase {
         )
     }
 
+    // MARK: - Missing seam space
+
+    func testMissingSpaceBetweenTwoKnownWordsIsRepaired() {
+        // Chat-template models drop the leading space: "…that the" + "team underestimated…" is
+        // two words with the space missing, not a misspelled splice.
+        XCTAssertEqual(
+            CompletionSeamGuard.verdict(
+                precedingText: "the main reason was that the",
+                completion: "team underestimated the work",
+                spellingAssessment: knowing(["the", "team"])
+            ),
+            .missingSeamSpace(head: "the", tail: "team")
+        )
+    }
+
+    func testMissingSpaceRepairNeedsBothHalvesKnown() {
+        // "gre" is not a word: a genuine mid-word splice stays suppressed even though "atful"
+        // would pass on its own.
+        XCTAssertEqual(
+            CompletionSeamGuard.verdict(
+                precedingText: "I am so gre",
+                completion: "atful for this",
+                spellingAssessment: knowing(["atful"])
+            ),
+            .seamMisspelling(word: "greatful")
+        )
+        // A first generated word cut short is not a word either.
+        XCTAssertEqual(
+            CompletionSeamGuard.verdict(
+                precedingText: "that the",
+                completion: "te",
+                spellingAssessment: knowing(["the"])
+            ),
+            .seamMisspelling(word: "thete")
+        )
+    }
+
+    func testKnownJoinIsNeverSplit() {
+        // "notebook" is a word, so the splice stands even though both halves are words too.
+        XCTAssertEqual(
+            CompletionSeamGuard.verdict(
+                precedingText: "open your note",
+                completion: "book and write",
+                spellingAssessment: knowing(["note", "book", "notebook"])
+            ),
+            .allow
+        )
+    }
+
+    func testMissingSpaceRepairStillRejectsATypoInTheFirstWord() {
+        // "teh" is a correctable typo, not a known word, so the repair does not apply and the
+        // seam rule suppresses as before.
+        let assessment: (String) -> CompletionSeamGuard.SpellingAssessment = {
+            $0 == "the" ? .known : ($0 == "teh" ? .correctableTypo : .uncorrectableTypo)
+        }
+        XCTAssertEqual(
+            CompletionSeamGuard.verdict(
+                precedingText: "that the",
+                completion: "teh work",
+                spellingAssessment: assessment
+            ),
+            .seamMisspelling(word: "theteh")
+        )
+    }
+
     func testSeamRuleOnlyAppliesMidWord() {
         // Caret after a space: no seam word exists, so nothing to judge.
         XCTAssertEqual(

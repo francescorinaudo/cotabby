@@ -664,7 +664,7 @@ extension SuggestionCoordinator {
             return "leadingWordMisspelling"
         case .junkPunctuationRun:
             return "seamJunkPunctuationRun"
-        case .allow:
+        case .allow, .missingSeamSpace:
             return "unknownSeamGuardSuppression"
         }
     }
@@ -789,11 +789,33 @@ extension SuggestionCoordinator {
         // started words that the native checker can actually correct read as glitches, so showing
         // nothing beats showing them. The leading-word check is intentionally fail-open for names
         // and jargon with no correction candidate.
-        let seamVerdict = CompletionSeamGuard.verdict(
+        var seamVerdict = CompletionSeamGuard.verdict(
             precedingText: liveContext.precedingText,
             completion: result.text,
             spellingAssessment: { self.completionSpellingAssessment(for: $0) }
         )
+        // Chat-template endpoints answer with the next word but without the space before it. Two
+        // known words across the seam are that case, so the space is restored rather than the
+        // whole suggestion suppressed; the raw text stays as the engine produced it.
+        var shownResult = result
+        if case let .missingSeamSpace(head, tail) = seamVerdict {
+            shownResult = SuggestionResult(
+                generation: result.generation,
+                rawText: result.rawText,
+                text: " " + result.text,
+                latency: result.latency,
+                suppressionReason: result.suppressionReason
+            )
+            logStage(
+                "seam-repaired",
+                workID: workID,
+                generation: result.generation,
+                message: "Inserted the missing space between \"\(head)\" and \"\(tail)\".",
+                rawOutput: result.rawText,
+                normalizedOutput: shownResult.text
+            )
+            seamVerdict = .allow
+        }
         if seamVerdict != .allow {
             clearSuggestion()
             hideOverlay(reason: "Overlay hidden because the completion failed the seam guard.")
@@ -817,12 +839,12 @@ extension SuggestionCoordinator {
         suggestionAnchorCache.record(
             identityKey: liveContext.focusedInputIdentityKey,
             precedingText: liveContext.precedingText,
-            fullText: result.text
+            fullText: shownResult.text
         )
         let session = interactionState.startSession(
-            fullText: result.text,
+            fullText: shownResult.text,
             liveContext: liveContext,
-            latency: result.latency
+            latency: shownResult.latency
         )
         state = .ready(text: session.remainingText, latency: session.latency)
 
@@ -838,7 +860,7 @@ extension SuggestionCoordinator {
             generation: result.generation,
             message: "Accepted a non-empty normalized suggestion.",
             rawOutput: result.rawText,
-            normalizedOutput: result.text
+            normalizedOutput: shownResult.text
         )
 
         // If the user pressed Tab while this continuation was still regenerating, accept its first

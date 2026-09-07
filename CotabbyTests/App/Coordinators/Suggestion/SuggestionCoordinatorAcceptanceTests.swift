@@ -449,6 +449,41 @@ final class SuggestionCoordinatorAcceptanceTests: XCTestCase {
         XCTAssertNil(coordinator.pendingSpeculativeSignature, "the exemption is single-use")
     }
 
+    /// Chat-template endpoints return the next word without its leading space ("…that the" +
+    /// "team underestimated"). The seam guard recognises two known words with the space missing
+    /// and the coordinator inserts it instead of suppressing the whole suggestion.
+    @MainActor
+    func test_applyInsertsTheMissingSeamSpaceBetweenTwoKnownWords() async {
+        let snapshot = CotabbyTestFixtures.focusedInputSnapshot(
+            precedingText: "The main reason we missed the deadline was that the"
+        )
+        let interactionState = SuggestionInteractionState()
+        let coordinator = makeCoordinator(
+            snapshot: snapshot,
+            overlayState: .hidden(reason: "test"),
+            inputMonitor: StubSuggestionInputMonitor(),
+            inserter: StubSuggestionInserter(),
+            interactionState: interactionState
+        )
+        coordinator.pendingSpeculativeSignature =
+            FocusedInputContext(snapshot: snapshot, generation: 1).contentSignature
+        let result = SuggestionResult(
+            generation: 999,
+            rawText: "team underestimated the work",
+            text: "team underestimated the work",
+            latency: 0.1
+        )
+
+        await coordinator.apply(result: result, workID: coordinator.currentWorkID)
+
+        guard case let .ready(text, _) = coordinator.state else {
+            XCTFail("Expected the repaired suggestion to apply, got \(coordinator.state)")
+            return
+        }
+        XCTAssertEqual(text, " team underestimated the work")
+        XCTAssertEqual(interactionState.activeSession?.fullText, " team underestimated the work")
+    }
+
     /// Without the signature exemption, a stale-generation result must keep being dropped.
     @MainActor
     func test_applyStillDropsStaleResultsWithoutSpeculativeSignature() async {
