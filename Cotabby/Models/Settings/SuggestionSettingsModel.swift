@@ -55,6 +55,7 @@ final class SuggestionSettingsModel: ObservableObject {
     @Published private(set) var openAICompatibleBaseURL: String
     @Published private(set) var openAICompatibleModelName: String
     @Published private(set) var openAICompatibleAPIMode: OpenAICompatibleAPIMode
+    @Published private(set) var isOpenAICompatibleThinkingDisabled: Bool
     /// Non-secret change token that lets lifecycle observers react to Keychain updates without
     /// publishing the credential itself.
     @Published private(set) var endpointCredentialRevision: UInt64 = 0
@@ -213,6 +214,7 @@ final class SuggestionSettingsModel: ObservableObject {
         openAICompatibleBaseURL = data.openAICompatibleBaseURL
         openAICompatibleModelName = data.openAICompatibleModelName
         openAICompatibleAPIMode = data.openAICompatibleAPIMode
+        isOpenAICompatibleThinkingDisabled = data.isOpenAICompatibleThinkingDisabled
         selectedWordCountPreset = data.selectedWordCountPreset
         isUsingCustomWordCountRange = data.isUsingCustomWordCountRange
         customWordCountLowWords = data.customWordCountLowWords
@@ -290,6 +292,7 @@ final class SuggestionSettingsModel: ObservableObject {
         openAICompatibleBaseURL = data.openAICompatibleBaseURL
         openAICompatibleModelName = data.openAICompatibleModelName
         openAICompatibleAPIMode = data.openAICompatibleAPIMode
+        isOpenAICompatibleThinkingDisabled = data.isOpenAICompatibleThinkingDisabled
         selectedWordCountPreset = data.selectedWordCountPreset
         isUsingCustomWordCountRange = data.isUsingCustomWordCountRange
         customWordCountLowWords = data.customWordCountLowWords
@@ -369,6 +372,7 @@ final class SuggestionSettingsModel: ObservableObject {
                 openAICompatibleBaseURL: openAICompatibleBaseURL,
                 openAICompatibleModelName: openAICompatibleModelName,
                 openAICompatibleAPIMode: openAICompatibleAPIMode,
+                isOpenAICompatibleThinkingDisabled: isOpenAICompatibleThinkingDisabled,
                 isPowerBasedModelSwitchingEnabled: isPowerBasedModelSwitchingEnabled,
                 batteryEngine: batteryEngine,
                 batteryModelFilename: batteryModelFilename,
@@ -508,12 +512,19 @@ final class SuggestionSettingsModel: ObservableObject {
         store.saveOpenAICompatibleAPIMode(mode)
     }
 
+    func setOpenAICompatibleThinkingDisabled(_ disabled: Bool) {
+        guard isOpenAICompatibleThinkingDisabled != disabled else { return }
+        isOpenAICompatibleThinkingDisabled = disabled
+        store.saveOpenAICompatibleThinkingDisabled(disabled)
+    }
+
     var openAICompatibleConfiguration: OpenAICompatibleEndpointConfiguration {
         get throws {
             try OpenAICompatibleEndpointConfiguration(
                 baseURLString: openAICompatibleBaseURL,
                 modelName: openAICompatibleModelName,
-                apiMode: openAICompatibleAPIMode
+                apiMode: openAICompatibleAPIMode,
+                disablesChatTemplateThinking: isOpenAICompatibleThinkingDisabled
             )
         }
     }

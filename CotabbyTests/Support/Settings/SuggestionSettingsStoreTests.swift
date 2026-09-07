@@ -438,15 +438,18 @@ final class SuggestionSettingsStoreTests: XCTestCase {
         )
         XCTAssertEqual(initial.openAICompatibleModelName, "")
         XCTAssertEqual(initial.openAICompatibleAPIMode, .chatCompletions)
+        XCTAssertFalse(initial.isOpenAICompatibleThinkingDisabled)
 
         store.saveOpenAICompatibleBaseURL("https://example.com/v1")
         store.saveOpenAICompatibleModelName("custom")
         store.saveOpenAICompatibleAPIMode(.completions)
+        store.saveOpenAICompatibleThinkingDisabled(true)
         let reloaded = store.load(configuration: .standard)
 
         XCTAssertEqual(reloaded.openAICompatibleBaseURL, "https://example.com/v1")
         XCTAssertEqual(reloaded.openAICompatibleModelName, "custom")
         XCTAssertEqual(reloaded.openAICompatibleAPIMode, .completions)
+        XCTAssertTrue(reloaded.isOpenAICompatibleThinkingDisabled)
     }
 
     func test_load_legacyModelOnlyProfilePreservedWithOpenSourceEngine() async {

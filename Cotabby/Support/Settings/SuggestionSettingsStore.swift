@@ -94,6 +94,7 @@ struct SuggestionSettingsStore {
     private static let openAICompatibleBaseURLDefaultsKey = "cotabbyOpenAICompatibleBaseURL"
     private static let openAICompatibleModelNameDefaultsKey = "cotabbyOpenAICompatibleModelName"
     private static let openAICompatibleAPIModeDefaultsKey = "cotabbyOpenAICompatibleAPIMode"
+    private static let endpointThinkingDisabledDefaultsKey = "cotabbyOpenAICompatibleThinkingDisabled"
     private static let selectedWordCountPresetDefaultsKey = "cotabbySelectedWordCountPreset"
     private static let usingCustomWordCountRangeDefaultsKey = "cotabbyUsingCustomWordCountRange"
     private static let customWordCountLowWordsDefaultsKey = "cotabbyCustomWordCountLowWords"
@@ -181,6 +182,7 @@ struct SuggestionSettingsStore {
         openAICompatibleBaseURLDefaultsKey,
         openAICompatibleModelNameDefaultsKey,
         openAICompatibleAPIModeDefaultsKey,
+        endpointThinkingDisabledDefaultsKey,
         selectedWordCountPresetDefaultsKey,
         usingCustomWordCountRangeDefaultsKey,
         customWordCountLowWordsDefaultsKey,
@@ -289,6 +291,8 @@ struct SuggestionSettingsStore {
             .string(forKey: Self.openAICompatibleAPIModeDefaultsKey)
             .flatMap(OpenAICompatibleAPIMode.init(rawValue:))
             ?? .chatCompletions
+        let resolvedEndpointThinkingDisabled = userDefaults
+            .bool(forKey: Self.endpointThinkingDisabledDefaultsKey)
         let resolvedWordCountPreset: SuggestionWordCountPreset = {
             let storedRaw = userDefaults.string(forKey: Self.selectedWordCountPresetDefaultsKey)
             // Migrate the retired "3-7" raw value to its replacement "4-7" so users who picked
@@ -520,6 +524,7 @@ struct SuggestionSettingsStore {
                 openAICompatibleBaseURL: resolvedOpenAICompatibleBaseURL,
                 openAICompatibleModelName: resolvedOpenAICompatibleModelName,
                 openAICompatibleAPIMode: resolvedOpenAICompatibleAPIMode,
+                isOpenAICompatibleThinkingDisabled: resolvedEndpointThinkingDisabled,
                 isPowerBasedModelSwitchingEnabled: resolvedPowerBasedModelSwitchingEnabled,
                 batteryEngine: resolvedBatteryEngine,
                 batteryModelFilename: resolvedBatteryModelFilename,
@@ -609,6 +614,7 @@ struct SuggestionSettingsStore {
         saveOpenAICompatibleBaseURL(data.openAICompatibleBaseURL)
         saveOpenAICompatibleModelName(data.openAICompatibleModelName)
         saveOpenAICompatibleAPIMode(data.openAICompatibleAPIMode)
+        saveOpenAICompatibleThinkingDisabled(data.isOpenAICompatibleThinkingDisabled)
         saveSelectedWordCountPreset(data.selectedWordCountPreset)
         saveUsingCustomWordCountRange(data.isUsingCustomWordCountRange)
         saveCustomWordCountRange(low: data.customWordCountLowWords, high: data.customWordCountHighWords)
@@ -771,6 +777,10 @@ struct SuggestionSettingsStore {
 
     func saveOpenAICompatibleAPIMode(_ mode: OpenAICompatibleAPIMode) {
         userDefaults.set(mode.rawValue, forKey: Self.openAICompatibleAPIModeDefaultsKey)
+    }
+
+    func saveOpenAICompatibleThinkingDisabled(_ disabled: Bool) {
+        userDefaults.set(disabled, forKey: Self.endpointThinkingDisabledDefaultsKey)
     }
 
     func savePowerBasedModelSwitchingEnabled(_ enabled: Bool) {

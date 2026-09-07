@@ -68,12 +68,18 @@ nonisolated struct OpenAICompatibleEndpointConfiguration: Equatable, Sendable {
     let baseURL: URL
     let modelName: String
     let apiMode: OpenAICompatibleAPIMode
+    /// Ask the server to render its chat template with `enable_thinking=false` (vLLM, llama.cpp
+    /// server, SGLang, oMLX). Reasoning models on those servers ignore `reasoning_effort` and
+    /// spend the whole short budget in a hidden thinking channel, so the completion arrives empty.
+    /// Off by default because hosted OpenAI-style APIs reject unknown request fields.
+    let disablesChatTemplateThinking: Bool
     let hostScope: OpenAICompatibleHostScope
 
     init(
         baseURLString: String,
         modelName: String,
-        apiMode: OpenAICompatibleAPIMode
+        apiMode: OpenAICompatibleAPIMode,
+        disablesChatTemplateThinking: Bool = false
     ) throws {
         let candidate = baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard var components = URLComponents(string: candidate),
@@ -106,6 +112,7 @@ nonisolated struct OpenAICompatibleEndpointConfiguration: Equatable, Sendable {
         baseURL = normalizedURL
         self.modelName = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
         self.apiMode = apiMode
+        self.disablesChatTemplateThinking = disablesChatTemplateThinking
         hostScope = scope
     }
 

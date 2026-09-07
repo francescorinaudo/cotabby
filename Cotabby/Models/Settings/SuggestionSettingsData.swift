@@ -21,6 +21,9 @@ struct SuggestionEngineSettings: Equatable {
     var openAICompatibleBaseURL: String
     var openAICompatibleModelName: String
     var openAICompatibleAPIMode: OpenAICompatibleAPIMode
+    /// Hidden preference (no Settings UI yet): send `chat_template_kwargs.enable_thinking=false`
+    /// on chat-completions requests. See `OpenAICompatibleEndpointConfiguration`.
+    var isOpenAICompatibleThinkingDisabled: Bool = false
     var isPowerBasedModelSwitchingEnabled: Bool
     var batteryEngine: SuggestionEngineKind
     var batteryModelFilename: String
@@ -167,6 +170,11 @@ extension SuggestionSettingsData {
     var openAICompatibleAPIMode: OpenAICompatibleAPIMode {
         get { engine.openAICompatibleAPIMode }
         set { engine.openAICompatibleAPIMode = newValue }
+    }
+
+    var isOpenAICompatibleThinkingDisabled: Bool {
+        get { engine.isOpenAICompatibleThinkingDisabled }
+        set { engine.isOpenAICompatibleThinkingDisabled = newValue }
     }
 
     var isPowerBasedModelSwitchingEnabled: Bool {

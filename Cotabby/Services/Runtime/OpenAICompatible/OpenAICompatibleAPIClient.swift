@@ -96,7 +96,8 @@ final class OpenAICompatibleAPIClient {
             mode: configuration.apiMode,
             model: configuration.modelName,
             prompt: prompt,
-            options: options
+            options: options,
+            disablesThinking: configuration.disablesChatTemplateThinking
         )
 
         let (bytes, response) = try await session.bytes(for: request)
@@ -136,13 +137,16 @@ final class OpenAICompatibleAPIClient {
         mode: OpenAICompatibleAPIMode,
         model: String,
         prompt: String,
-        options: OpenAICompatibleGenerationOptions
+        options: OpenAICompatibleGenerationOptions,
+        disablesThinking: Bool
     ) throws -> Data {
         switch mode {
         case .completions:
             return try encoder.encode(CompletionRequest(model: model, prompt: prompt, options: options))
         case .chatCompletions:
-            return try encoder.encode(ChatCompletionRequest(model: model, prompt: prompt, options: options))
+            return try encoder.encode(ChatCompletionRequest(
+                model: model, prompt: prompt, options: options, disablesThinking: disablesThinking
+            ))
         }
     }
 
@@ -302,6 +306,15 @@ private nonisolated struct CompletionRequest: Encodable {
     }
 }
 
+/// Template arguments understood by servers that render the chat template themselves.
+private nonisolated struct ChatTemplateKwargs: Encodable {
+    let enableThinking: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case enableThinking = "enable_thinking"
+    }
+}
+
 private nonisolated struct ChatCompletionRequest: Encodable {
     struct Message: Encodable {
         let role: String
@@ -319,9 +332,19 @@ private nonisolated struct ChatCompletionRequest: Encodable {
     /// `reasoning_effort` is part of the OpenAI-compatible chat surface and is ignored by models
     /// that do not expose reasoning.
     let reasoningEffort = "none"
+    /// Servers that ignore `reasoning_effort` (vLLM, llama.cpp server, SGLang, oMLX) honour
+    /// `chat_template_kwargs.enable_thinking` instead. Sent only when the endpoint opts in, because
+    /// hosted OpenAI-style APIs reject unknown fields with HTTP 400.
+    let chatTemplateKwargs: ChatTemplateKwargs?
 
-    init(model: String, prompt: String, options: OpenAICompatibleGenerationOptions) {
+    init(
+        model: String,
+        prompt: String,
+        options: OpenAICompatibleGenerationOptions,
+        disablesThinking: Bool
+    ) {
         self.model = model
+        chatTemplateKwargs = disablesThinking ? ChatTemplateKwargs(enableThinking: false) : nil
         // The shared prompt is shaped as a base-model continuation and intentionally ends at the
         // caret. Chat models otherwise tend to answer by repeating that final line, which Cotabby
         // correctly normalizes away and makes the user wait for a suggestion that never appears.
@@ -342,6 +365,7 @@ private nonisolated struct ChatCompletionRequest: Encodable {
         case maxTokens = "max_tokens"
         case topP = "top_p"
         case reasoningEffort = "reasoning_effort"
+        case chatTemplateKwargs = "chat_template_kwargs"
     }
 }
 

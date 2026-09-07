@@ -311,6 +311,77 @@ final class OpenAICompatibleAPIClientTests: XCTestCase {
         await fulfillment(of: [stopped], timeout: 1)
     }
 
+    // MARK: - Chat template thinking control
+
+    private static let streamedNext =
+        "data: {\"choices\":[{\"delta\":{\"content\":\" next\"}}]}\n\n" + "data: [DONE]\n\n"
+
+    private static let sampleOptions = OpenAICompatibleGenerationOptions(
+        maxPredictionTokens: 16, temperature: 0.2, topP: 0.9
+    )
+
+    func test_chatGeneration_omitsChatTemplateKwargsByDefault() async throws {
+        let client = makeClient()
+        EndpointStubURLProtocol.handler = { request in
+            let json = try Self.jsonBody(request)
+            XCTAssertNil(json["chat_template_kwargs"], "OpenAI-proper endpoints reject unknown fields")
+            XCTAssertEqual(json["reasoning_effort"] as? String, "none")
+            return Self.response(request: request, contentType: "text/event-stream", body: Self.streamedNext)
+        }
+
+        _ = try await client.generate(
+            configuration: configuration(mode: .chatCompletions),
+            apiKey: nil,
+            prompt: "Continue me",
+            options: Self.sampleOptions,
+            onPartialRawText: nil
+        )
+    }
+
+    func test_chatGeneration_sendsEnableThinkingFalseWhenConfigured() async throws {
+        let client = makeClient()
+        EndpointStubURLProtocol.handler = { request in
+            let json = try Self.jsonBody(request)
+            let kwargs = try XCTUnwrap(json["chat_template_kwargs"] as? [String: Any])
+            XCTAssertEqual(kwargs["enable_thinking"] as? Bool, false)
+            XCTAssertEqual(kwargs.count, 1)
+            XCTAssertEqual(json["reasoning_effort"] as? String, "none")
+            return Self.response(request: request, contentType: "text/event-stream", body: Self.streamedNext)
+        }
+
+        let output = try await client.generate(
+            configuration: configuration(mode: .chatCompletions, disablesThinking: true),
+            apiKey: nil,
+            prompt: "Continue me",
+            options: Self.sampleOptions,
+            onPartialRawText: nil
+        )
+
+        XCTAssertEqual(output, " next")
+    }
+
+    func test_completionGeneration_neverSendsChatTemplateKwargs() async throws {
+        let client = makeClient()
+        EndpointStubURLProtocol.handler = { request in
+            let json = try Self.jsonBody(request)
+            XCTAssertNil(json["chat_template_kwargs"])
+            XCTAssertNotNil(json["prompt"])
+            return Self.response(
+                request: request,
+                contentType: "text/event-stream",
+                body: "data: {\"choices\":[{\"text\":\" next\"}]}\n\n" + "data: [DONE]\n\n"
+            )
+        }
+
+        _ = try await client.generate(
+            configuration: configuration(mode: .completions, disablesThinking: true),
+            apiKey: nil,
+            prompt: "Continue me",
+            options: Self.sampleOptions,
+            onPartialRawText: nil
+        )
+    }
+
     private func makeClient() -> OpenAICompatibleAPIClient {
         let sessionConfiguration = URLSessionConfiguration.ephemeral
         sessionConfiguration.protocolClasses = [EndpointStubURLProtocol.self]
@@ -319,12 +390,14 @@ final class OpenAICompatibleAPIClientTests: XCTestCase {
 
     private func configuration(
         baseURL: String = OpenAICompatibleEndpointConfiguration.defaultBaseURLString,
-        mode: OpenAICompatibleAPIMode = .chatCompletions
+        mode: OpenAICompatibleAPIMode = .chatCompletions,
+        disablesThinking: Bool = false
     ) throws -> OpenAICompatibleEndpointConfiguration {
         try OpenAICompatibleEndpointConfiguration(
             baseURLString: baseURL,
             modelName: "gemma4:12b-mlx",
-            apiMode: mode
+            apiMode: mode,
+            disablesChatTemplateThinking: disablesThinking
         )
     }
 
