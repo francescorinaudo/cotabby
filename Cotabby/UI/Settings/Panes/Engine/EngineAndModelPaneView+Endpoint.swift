@@ -139,6 +139,18 @@ extension EngineAndModelPaneView {
             }
             .pickerStyle(.segmented)
             .settingsItem(.endpointAPIMode)
+
+            Toggle(isOn: endpointThinkingDisabledBinding) {
+                SettingsRowLabel(
+                    title: "Disable Model Thinking",
+                    description: "Sends chat_template_kwargs.enable_thinking=false with Chat Completions so " +
+                        "reasoning models answer instead of thinking in a hidden channel. Works with vLLM, " +
+                        "llama.cpp server, SGLang and oMLX; leave off for hosted APIs that reject unknown fields.",
+                    systemImage: "brain"
+                )
+            }
+            .disabled(suggestionSettings.openAICompatibleAPIMode != .chatCompletions)
+            .settingsItem(.endpointThinking)
         }
     }
 

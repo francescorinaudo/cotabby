@@ -39,7 +39,10 @@ final class SettingsIndexTests: XCTestCase {
             ("typo", .automaticallyFixTypos),
             ("model status", .modelStatus),
             ("battery", .batteryModel),
-            ("plugged", .pluggedInModel)
+            ("plugged", .pluggedInModel),
+            ("thinking", .endpointThinking),
+            ("reasoning", .endpointThinking),
+            ("chat_template_kwargs", .endpointThinking)
         ]
         for expectation in expectations {
             XCTAssertTrue(
@@ -47,6 +50,12 @@ final class SettingsIndexTests: XCTestCase {
                 "query \"\(expectation.query)\" should surface \(expectation.item)"
             )
         }
+    }
+
+    func test_chatTemplateKwargsQueryRanksThinkingToggleFirst() {
+        // The summary and the API Format row both contain "chat", so only an exact keyword hit
+        // puts the toggle above "Endpoint API Format" when a user types the field name.
+        XCTAssertEqual(SettingsItem.results(for: "chat_template_kwargs").first, .endpointThinking)
     }
 
     func test_blankQueryReturnsNothing() {

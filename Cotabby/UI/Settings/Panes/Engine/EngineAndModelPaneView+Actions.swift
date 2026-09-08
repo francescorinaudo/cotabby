@@ -83,6 +83,13 @@ extension EngineAndModelPaneView {
         )
     }
 
+    var endpointThinkingDisabledBinding: Binding<Bool> {
+        Binding(
+            get: { suggestionSettings.isOpenAICompatibleThinkingDisabled },
+            set: { suggestionSettings.setOpenAICompatibleThinkingDisabled($0) }
+        )
+    }
+
     var endpointPrivacyWarning: String? {
         (try? suggestionSettings.openAICompatibleConfiguration)?.privacyWarning
     }

@@ -70,6 +70,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
     case endpointAPIKey
     case endpointStatus
     case endpointModel
+    case endpointThinking
     // Shortcuts
     case acceptanceMode
     case acceptWord
@@ -151,6 +152,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .endpointAPIKey: return "Endpoint API Key"
         case .endpointStatus: return "Endpoint Status"
         case .endpointModel: return "Endpoint Model"
+        case .endpointThinking: return "Disable Endpoint Model Thinking"
         case .acceptanceMode: return "Acceptance Mode"
         case .acceptWord: return "Accept Word"
         case .acceptEntireSuggestion: return "Accept Entire Suggestion"
@@ -227,6 +229,7 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .endpointAPIKey: return "key"
         case .endpointStatus: return "info.circle"
         case .endpointModel: return "shippingbox"
+        case .endpointThinking: return "brain"
         case .acceptanceMode: return "textformat.abc"
         case .acceptWord: return "arrow.right.to.line"
         case .acceptEntireSuggestion: return "text.insert"
@@ -268,7 +271,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .engine, .appleIntelligenceAvailability, .modelStatus, .selectedModel,
              .lowPowerModeAutoDisable, .powerBasedModelSwitching, .batteryModel, .pluggedInModel,
              .downloadModels, .huggingFaceBrowser, .modelsFolder, .lmStudio,
-             .endpointBaseURL, .endpointAPIMode, .endpointAPIKey, .endpointStatus, .endpointModel:
+             .endpointBaseURL, .endpointAPIMode, .endpointAPIKey, .endpointStatus, .endpointModel,
+             .endpointThinking:
             return .engineAndModel
         case .acceptanceMode, .acceptWord, .acceptEntireSuggestion, .toggleTabby:
             return .shortcuts
@@ -340,6 +344,8 @@ enum SettingsItem: String, CaseIterable, Identifiable {
         case .endpointAPIKey: return "Optional bearer token stored securely in Keychain."
         case .endpointStatus: return "Whether Cotabby can reach the server and list its models."
         case .endpointModel: return "The model identifier sent to the configured endpoint."
+        case .endpointThinking:
+            return "Skip the model's hidden thinking on local servers so chat completions are not empty."
         case .acceptanceMode: return "Whether the accept key takes a word or a phrase."
         case .acceptWord: return "The key that inserts the next word."
         case .acceptEntireSuggestion: return "The key that inserts the whole suggestion."
@@ -524,6 +530,9 @@ enum SettingsItem: String, CaseIterable, Identifiable {
             return ["connect", "connection", "server", "status", "refresh", "health", "models"]
         case .endpointModel:
             return ["model", "identifier", "ollama", "lm studio", "vllm", "endpoint"]
+        case .endpointThinking:
+            return ["thinking", "reasoning", "reasoning model", "chat_template_kwargs",
+                    "enable_thinking", "vllm", "llama.cpp", "sglang", "omlx", "qwen", "empty"]
         case .acceptanceMode:
             return ["acceptance", "word", "phrase", "mode", "tap", "hold", "behavior",
                     "how to accept"]
